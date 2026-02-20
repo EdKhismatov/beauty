@@ -5,6 +5,7 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import process from 'node:process';
 import { bootstrapSwagger } from 'src/bootstrap/index';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { appConfig } from './config';
 import { Environment } from './config/dto';
 import { DEVELOPMENT_STRATEGY, PinoService, PRODUCTION_STRATEGY } from './logger';
@@ -29,6 +30,8 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices();
+
+  app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
   app.useGlobalPipes(
     new ValidationPipe({
