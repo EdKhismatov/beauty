@@ -22,4 +22,30 @@ export class EmailService {
       this.logger.error(`Ошибка при отправке письма на ${to}: ${error.message}`);
     }
   }
+
+  async sendPasswordResetCode(to: string, keys: string) {
+    try {
+      await this.mailerService.sendMail({
+        to,
+        subject: 'Восстановление доступа',
+        html: `Код восстановления: ${keys}`,
+      });
+      this.logger.log(`Письмо успешно отправлено на ${to}`);
+    } catch (error) {
+      this.logger.error(`Ошибка при отправке письма на ${to}: ${error.message}`);
+    }
+  }
+
+  async sendPasswordRecoveryCode(to: string, message: string) {
+    try {
+      await this.mailerService.sendMail({
+        to,
+        subject: 'Восстановление пароля',
+        html: `${message}`,
+      });
+      this.logger.log(`Письмо успешно отправлено на ${to}`);
+    } catch (error) {
+      this.logger.error(`Ошибка при отправке письма на ${to}: ${error.message}`);
+    }
+  }
 }
