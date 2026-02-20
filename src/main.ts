@@ -27,6 +27,8 @@ async function bootstrap() {
     },
   });
 
+  await app.startAllMicroservices();
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

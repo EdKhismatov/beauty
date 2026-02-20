@@ -18,7 +18,7 @@ import { UserEntity } from '../../database/entities/user.entity';
 import { EmailService } from '../mailer/email.service';
 import { UserService } from '../users/user.service';
 import { JwtPayload, TokenPair } from './auth.types';
-import { LoginDto, UserCreateDto } from './dto';
+import { ChangePasswordDto, LoginDto, RequestPasswordResetDto, RestorePasswordDto, UserCreateDto } from './dto';
 import { TokenDto } from './dto/token.dto';
 
 @Injectable()
@@ -30,13 +30,14 @@ export class AuthService {
     private readonly emailService: EmailService,
     @Inject('MAIL_SERVICE') private readonly rabbitClient: ClientProxy,
   ) {}
+
   // Регистрация пользователя
   async register(dto: UserCreateDto) {
     const domain = dto.email.split('@')[1];
     const isBad = await this.redisService.get(`bad_domain:${domain}`);
 
     if (isBad) {
-      throw new BadRequestException('Использование временных почт запрещено!');
+      throw new BadRequestException('Использование временных доменов запрещено!');
     }
 
     const token = randomBytes(32).toString('hex');
@@ -65,7 +66,6 @@ export class AuthService {
     try {
       const payload = { email: user.email, url };
       this.rabbitClient.emit('send_welcome_email', payload);
-
       this.logger.log(`Письмо отправлено в RabbitMQ`);
     } catch (error) {
       this.logger.log(`Ошибка,письмо не отправлено`, error.message);
@@ -220,5 +220,90 @@ export class AuthService {
     }
 
     return decoded as JwtPayload;
+  }
+
+  // изменение пароля
+  async change(dto: ChangePasswordDto) {
+    const user = await UserEntity.findOne({
+      where: { email: dto.email },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const equals = await compare(dto.currentPassword, user.password);
+
+    if (!equals) {
+      throw new UnauthorizedException("Password doesn't match");
+    }
+
+    // хешируем пароль
+    const rounds = 10;
+    user.password = await hash(dto.newPassword, rounds);
+    await user.save();
+
+    this.logger.log(`Пароль пользователя ${dto.email} изменен`);
+    return {
+      mail: user.email,
+      message: 'Password updated successfully',
+    };
+  }
+
+  // Отправка кода для восстановления почты
+  async requestPasswordReset(body: RequestPasswordResetDto) {
+    const user = await UserEntity.findOne({ where: { email: body.email } });
+    if (!user) {
+      this.logger.log(`Попытка восстановления пароля для несуществующей почты: ${body.email}`);
+      return { success: true };
+    }
+    const keys = randomBytes(6).toString('hex');
+    await this.redisService.set(`keys:${keys}`, { email: body.email }, { EX: 180 });
+
+    try {
+      const payload = { email: user.email, keys };
+      this.rabbitClient.emit('send_password_reset_email', payload);
+
+      this.logger.log(`Письмо отправлено в RabbitMQ`);
+    } catch (error) {
+      this.logger.log(`Ошибка,письмо не отправлено`, error.message);
+    }
+    return { success: true };
+  }
+
+  // восстановление пароля с кодом подтверждения
+  async restorePassword(body: RestorePasswordDto) {
+    const confirmationKey = await this.redisService.get(`keys:${body.keys}`);
+
+    if (!confirmationKey) {
+      this.logger.log(`Ключ неверный или истек`);
+      throw new UnauthorizedException('Invalid or expired code');
+    }
+
+    if (confirmationKey.email !== body.email) {
+      this.logger.log(`Попытка подмены почты! Ключ для ${confirmationKey.email} использован для ${body.email}`);
+      throw new UnauthorizedException('Invalid code for this email');
+    }
+
+    const user = await UserEntity.findOne({ where: { email: body.email } });
+    if (!user) {
+      this.logger.log(`Попытка восстановления пароля для несуществующей почты: ${body.email}`);
+      return { success: true };
+    }
+
+    const rounds = 10;
+    user.password = await hash(body.newPassword, rounds);
+    await user.save();
+
+    await this.redisService.delete(`keys:${body.keys}`);
+
+    try {
+      const payload = { email: user.email, message: 'Ваш пароль успешно изменен' };
+      this.rabbitClient.emit('send_password_recovery_email', payload);
+
+      this.logger.log(`Письмо отправлено в RabbitMQ`);
+    } catch (error) {
+      this.logger.log(`Ошибка,письмо не отправлено`, error.message);
+    }
+    return { success: true };
   }
 }

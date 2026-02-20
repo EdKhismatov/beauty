@@ -1,10 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query, Req, Request, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { AuthGuard } from '../../guards/jwt.guard';
 import { AuthService } from './auth.service';
 import type { AuthenticatedRequest } from './auth.types';
-import { LoginDto, UserCreateDto } from './dto';
+import { ChangePasswordDto, LoginDto, RequestPasswordResetDto, RestorePasswordDto, UserCreateDto } from './dto';
 import { TokenDto } from './dto/token.dto';
 
 @ApiTags('auth')
@@ -69,5 +69,33 @@ export class AuthController {
   async confirms(@Query('token') token: string) {
     console.log('token', token);
     return await this.authService.confirms(token);
+  }
+
+  // Изменениние пароля
+  @UseGuards(AuthGuard)
+  @ApiCreatedResponse({ description: 'Сhange password' })
+  @ApiResponse({ status: 200, description: 'Пароль изменен' })
+  @HttpCode(HttpStatus.OK)
+  @Put('change')
+  async change(@Body() body: ChangePasswordDto) {
+    return await this.authService.change(body);
+  }
+
+  // отправка кода для восстановления почты
+  @ApiCreatedResponse({ description: 'Sending a password recovery code' })
+  @ApiResponse({ status: 200, description: 'Код отправлен' })
+  @HttpCode(HttpStatus.OK)
+  @Post('restore')
+  async requestPasswordReset(@Body() body: RequestPasswordResetDto) {
+    return await this.authService.requestPasswordReset(body);
+  }
+
+  // восстановление пароля с кодом подтверждения
+  @ApiCreatedResponse({ description: 'Reinstatement of the president' })
+  @ApiResponse({ status: 200, description: 'Пароль обновлен' })
+  @HttpCode(HttpStatus.OK)
+  @Post('change')
+  async restorePassword(@Body() body: RestorePasswordDto) {
+    return await this.authService.restorePassword(body);
   }
 }
