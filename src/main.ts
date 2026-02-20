@@ -21,6 +21,7 @@ async function bootstrap() {
     options: {
       urls: [appConfig.rabbitUrl],
       queue: 'mail_queue',
+      noAck: false,
       queueOptions: {
         durable: false,
       },
@@ -32,6 +33,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
 

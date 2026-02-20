@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsString, Length } from 'class-validator';
+import { IsEmail, IsEnum, IsString, Length, Matches } from 'class-validator';
 import { RolesUser } from '../../../guards/role.guard';
 
 export class UserCreateDto {
@@ -15,6 +15,9 @@ export class UserCreateDto {
   @ApiProperty({ format: 'password', description: 'Введите пароль' })
   @IsString()
   @Length(6, 512)
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'Пароль слишком слабый: добавьте заглавную букву, цифру или спецсимвол',
+  })
   password: string;
 
   @ApiProperty({ description: 'Выберите роль' })

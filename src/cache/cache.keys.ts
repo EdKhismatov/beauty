@@ -1,6 +1,3 @@
 export const cacheRefreshToken = (token: string) => `refresh:${token}`;
-export const cacheProductsId = (id: string) => `getProductId:${id}`;
-export const cacheProductsAll = (id: string) => `getProductAll:${id}`;
-export const cacheProductsMy = (id: string) => `getProductMy:${id}`;
-export const cacheCategoriesAll = () => `categories_all_with_products:`;
-export const cacheCategoriesId = (id: string) => `cacheCategoriesId${id}:`;
+export const cacheRateLimit = (email: string) => `rate-limit:recovery:${email}`;
+export const cacheKey = (key: string) => `key:${key}`;

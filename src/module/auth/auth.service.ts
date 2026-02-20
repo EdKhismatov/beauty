@@ -11,7 +11,7 @@ import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { decode, sign, verify } from 'jsonwebtoken';
 import { CacheTime } from '../../cache/cache.constants';
-import { cacheRefreshToken } from '../../cache/cache.keys';
+import { cacheKey, cacheRateLimit, cacheRefreshToken } from '../../cache/cache.keys';
 import { RedisService } from '../../cache/redis.service';
 import { appConfig } from '../../config';
 import { UserEntity } from '../../database/entities/user.entity';
@@ -90,7 +90,7 @@ export class AuthService {
 
     if (!user) {
       this.logAttempt(false, 'Пользователь не существует', IpAddress, dto.email);
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Неверный email или пароль');
     }
 
     const equals = await compare(dto.password, user.password);
@@ -100,17 +100,9 @@ export class AuthService {
     }
 
     if (!user.isVerified) {
-      const token = randomBytes(32).toString('hex');
-      const url = `http://localhost:${appConfig.port}/auth/verify?token=${token}`;
-      try {
-        await user.update({ verificationToken: token });
-        await this.emailService.sendWelcomeEmail(user.email, url);
-        this.logger.log(`Повторное письмо отправлено на ${user.email}`);
-      } catch (e) {
-        this.logger.error(`Не удалось отправить повторное письмо: ${e.message}`);
-      }
-      this.logAttempt(false, 'Почта не подтверждена', IpAddress, dto.email);
-      throw new UnauthorizedException('Почта не подтверждена');
+      this.logger.log(`Попытка входа с не подтвержденной почтой: ${user.email}`);
+      // Здесь можно отправить письмо повторно, если нужно
+      throw new UnauthorizedException('Пожалуйста, подтвердите вашу почту');
     }
 
     const tokens = await this.upsertTokenPair(user);
@@ -251,13 +243,24 @@ export class AuthService {
 
   // Отправка кода для восстановления почты
   async requestPasswordReset(body: RequestPasswordResetDto) {
+    const throttleKey = cacheRateLimit(body.email);
+    const isThrottled = await this.redisService.get(throttleKey);
+
+    if (isThrottled) {
+      this.logger.warn(`Частые запросы на восстановление: ${body.email}`);
+      return { success: false, message: 'Попробуйте позже (не чаще раза в минуту)' };
+    }
+
     const user = await UserEntity.findOne({ where: { email: body.email } });
     if (!user) {
       this.logger.log(`Попытка восстановления пароля для несуществующей почты: ${body.email}`);
       return { success: true };
     }
     const keys = randomBytes(6).toString('hex');
-    await this.redisService.set(`keys:${keys}`, { email: body.email }, { EX: 180 });
+    const cacheKeys = cacheKey(keys);
+    await this.redisService.set(cacheKeys, { email: body.email }, { EX: 180 });
+
+    await this.redisService.set(throttleKey, '1', { EX: 60 });
 
     try {
       const payload = { email: user.email, keys };
@@ -265,14 +268,14 @@ export class AuthService {
 
       this.logger.log(`Письмо отправлено в RabbitMQ`);
     } catch (error) {
-      this.logger.log(`Ошибка,письмо не отправлено`, error.message);
+      this.logger.error(`Ошибка,письмо не отправлено`, error.message);
     }
     return { success: true };
   }
 
   // восстановление пароля с кодом подтверждения
   async restorePassword(body: RestorePasswordDto) {
-    const confirmationKey = await this.redisService.get(`keys:${body.keys}`);
+    const confirmationKey = await this.redisService.get(cacheKey(body.keys));
 
     if (!confirmationKey) {
       this.logger.log(`Ключ неверный или истек`);
@@ -284,20 +287,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid code for this email');
     }
 
-    const user = await UserEntity.findOne({ where: { email: body.email } });
-    if (!user) {
-      this.logger.log(`Попытка восстановления пароля для несуществующей почты: ${body.email}`);
-      return { success: true };
+    const rounds = 10;
+    const hashedPassword = await hash(body.newPassword, rounds);
+    const [affectedCount] = await UserEntity.update({ password: hashedPassword }, { where: { email: body.email } });
+
+    if (affectedCount === 0) {
+      throw new BadRequestException('Пользователь не найден');
     }
 
-    const rounds = 10;
-    user.password = await hash(body.newPassword, rounds);
-    await user.save();
-
-    await this.redisService.delete(`keys:${body.keys}`);
+    await this.redisService.delete(cacheKey(body.keys));
 
     try {
-      const payload = { email: user.email, message: 'Ваш пароль успешно изменен' };
+      const payload = { email: body.email, message: 'Ваш пароль успешно изменен' };
       this.rabbitClient.emit('send_password_recovery_email', payload);
 
       this.logger.log(`Письмо отправлено в RabbitMQ`);
