@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length, Matches } from 'class-validator';
 
 export class RestorePasswordDto {
   @IsEmail()
@@ -10,5 +10,8 @@ export class RestorePasswordDto {
 
   @IsString()
   @Length(6, 512)
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'Пароль слишком слабый: добавьте заглавную букву, цифру или спецсимвол',
+  })
   newPassword: string;
 }
