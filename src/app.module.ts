@@ -3,9 +3,10 @@ import { AppController } from './app.controller';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './module/auth/auth.module';
 import { EmailModule } from './module/mailer/email.module';
+import { MinioModule } from './module/minio/minio.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, EmailModule],
+  imports: [DatabaseModule, AuthModule, EmailModule, MinioModule],
   controllers: [AppController],
   providers: [],
 })

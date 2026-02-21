@@ -30,13 +30,13 @@ const rawConfig: EnvStructure<AppConfigDto> = {
     pass: process.env.SMTP_PASS,
     email: process.env.SMTP_EMAIL,
   },
-  // minio: {
-  //   minioPort: process.env.MINIO_PORT,
-  //   minioConsolePort: process.env.MINIO_CONSOLE_PORT,
-  //   minioUser: process.env.MINIO_USER,
-  //   minioPassword: process.env.MINIO_PASSWORD,
-  //   minioBucket: process.env.MINIO_BUCKET,
-  // },
+  minio: {
+    minioPort: process.env.MINIO_PORT,
+    minioConsolePort: process.env.MINIO_CONSOLE_PORT,
+    minioUser: process.env.MINIO_USER,
+    minioPassword: process.env.MINIO_PASSWORD,
+    minioBucket: process.env.MINIO_BUCKET,
+  },
   // throttler: {
   //   throttlerTtl: process.env.THROTTLE_TTL,
   //   throttlerLimit: process.env.THROTTLE_LIMIT,

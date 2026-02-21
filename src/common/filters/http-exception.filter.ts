@@ -2,7 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { PinoService } from '../../logger';
 
-@Catch() // Ловим абсолютно всё
+@Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: PinoService) {}
 
