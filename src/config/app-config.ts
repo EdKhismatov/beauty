@@ -36,6 +36,7 @@ const rawConfig: EnvStructure<AppConfigDto> = {
     minioUser: process.env.MINIO_USER,
     minioPassword: process.env.MINIO_PASSWORD,
     minioBucket: process.env.MINIO_BUCKET,
+    minioEndpoint: process.env.MINIO_ENDPOINT,
   },
   // throttler: {
   //   throttlerTtl: process.env.THROTTLE_TTL,

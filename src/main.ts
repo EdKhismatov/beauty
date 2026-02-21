@@ -1,3 +1,4 @@
+import contentParser from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
@@ -30,6 +31,14 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices();
+
+  const fastifyInstance = app.getHttpAdapter().getInstance();
+
+  await fastifyInstance.register(contentParser, {
+    limits: {
+      fileSize: 5 * 1024 * 1024,
+    },
+  });
 
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
 

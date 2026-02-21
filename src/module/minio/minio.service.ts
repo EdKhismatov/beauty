@@ -9,7 +9,7 @@ export class MinioService implements OnModuleInit {
 
   constructor() {
     this.minioClient = new Minio.Client({
-      endPoint: 'localhost',
+      endPoint: appConfig.minio.minioEndpoint || 'localhost',
       port: appConfig.minio.minioPort,
       useSSL: false,
       accessKey: appConfig.minio.minioUser,
@@ -19,7 +19,7 @@ export class MinioService implements OnModuleInit {
 
   // Выполнится при запуске приложения
   async onModuleInit() {
-    const bucketName = 'oko-photos';
+    const bucketName = appConfig.minio.minioBucket;
     const exists = await this.minioClient.bucketExists(bucketName);
     if (!exists) {
       await this.minioClient.makeBucket(bucketName, 'us-east-1');
