@@ -1,15 +1,21 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import { CacheTime } from '../../cache/cache.constants';
 import { cacheMyPortfolio } from '../../cache/cache.keys';
 import { RedisService } from '../../cache/redis.service';
 import { PortfolioEntity } from '../../database/entities/portfolio.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { FilesService } from '../../upload/files.service';
-import { CreatePortfolioDto } from './dto/create-portfolio.dto';
-import { IdDto } from './dto/id.dto';
-import { IdPortfolioDto } from './dto/id-portfolio.dto';
+import { CreatePortfolioDto, IdDto, IdPortfolioDto } from './dto';
 
 @Injectable()
 export class PortfolioService {
@@ -24,6 +30,8 @@ export class PortfolioService {
     private readonly redisService: RedisService,
 
     private readonly filesService: FilesService,
+
+    private readonly sequelize: Sequelize,
   ) {}
 
   async uploadWork(body: CreatePortfolioDto, user: UserEntity) {
@@ -82,18 +90,30 @@ export class PortfolioService {
 
   // удаление портфолио
   async removePortfolio(id: IdPortfolioDto, user: UserEntity) {
-    const portfolio = await this.portfolioEntity.findByPk(id.id);
-    if (!portfolio) {
-      throw new NotFoundException(`Портфолио не найдено`);
-    }
-    if (portfolio.userId !== user.id) {
-      throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
-    }
-    await Promise.all(portfolio.imageUrl.map((el) => this.filesService.removeImage(el)));
-    await portfolio.destroy();
+    const transaction = await this.sequelize.transaction();
+    try {
+      const portfolio = await this.portfolioEntity.findByPk(id.id, { transaction });
+      if (!portfolio) {
+        throw new NotFoundException(`Портфолио не найдено`);
+      }
+      if (portfolio.userId !== user.id) {
+        throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
+      }
+      const filesToDelete = [...portfolio.imageUrl];
+      await portfolio.destroy({ transaction });
 
-    const cacheKey = cacheMyPortfolio(user.id);
-    await this.redisService.delete(cacheKey);
-    return { success: true };
+      await transaction.commit();
+      await Promise.all(filesToDelete.map((el) => this.filesService.removeImage(el)));
+
+      const cacheKey = cacheMyPortfolio(user.id);
+      await this.redisService.delete(cacheKey);
+
+      return { success: true };
+    } catch (error) {
+      await transaction.rollback();
+      if (error instanceof HttpException) throw error;
+      this.logger.error(`Ошибка при удалении портфолио: ${error.message}`);
+      throw new InternalServerErrorException('Не удалось удалить портфолио');
+    }
   }
 }
