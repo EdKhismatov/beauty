@@ -94,9 +94,11 @@ export class PortfolioService {
     try {
       const portfolio = await this.portfolioEntity.findByPk(id.id, { transaction });
       if (!portfolio) {
+        this.logger.error(`Портфолио с id:${id.id} не найдено`);
         throw new NotFoundException(`Портфолио не найдено`);
       }
       if (portfolio.userId !== user.id) {
+        this.logger.error(`Недостаточно прав для удаления данного портфолио`);
         throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
       }
       const filesToDelete = [...portfolio.imageUrl];
@@ -108,6 +110,7 @@ export class PortfolioService {
       const cacheKey = cacheMyPortfolio(user.id);
       await this.redisService.delete(cacheKey);
 
+      this.logger.error(`Портфолио с id:${id.id} успешно удалено`);
       return { success: true };
     } catch (error) {
       await transaction.rollback();
