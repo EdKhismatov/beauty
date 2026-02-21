@@ -1,5 +1,5 @@
-import { Controller, InternalServerErrorException, Logger, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, InternalServerErrorException, Logger, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { UserEntity } from '../../database/entities/user.entity';
 import { Roles } from '../../decorators/roles.decorator';
@@ -20,6 +20,7 @@ export class PortfolioController {
     private readonly portfolioService: PortfolioService,
   ) {}
 
+  // создаем портфолио с фото
   @UseGuards(AuthGuard, RolesGuard)
   @Roles([RolesUser.master, RolesUser.admin])
   @ApiConsumes('multipart/form-data')
@@ -45,11 +46,21 @@ export class PortfolioController {
       userId: user.id,
     };
     try {
-      return await this.portfolioService.uploadWork(productData as CreatePortfolioDto);
+      return await this.portfolioService.uploadWork(productData as CreatePortfolioDto, user);
     } catch (error) {
       this.logger.error('Ошибка сохранения в БД, удаляем загруженные файлы...');
       await Promise.all(fileNames.map((el) => this.filesService.removeImage(el)));
       throw new InternalServerErrorException('Не удалось сохранить работу');
     }
+  }
+
+  // товары продавца
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles([RolesUser.master, RolesUser.admin])
+  @ApiOkResponse({ description: "Master's portfolio" })
+  @ApiOperation({ summary: 'Портфолио мастера' })
+  @Get('')
+  async getMyProduct(@User() user: UserEntity) {
+    return await this.portfolioService.getMyPortfolio(user);
   }
 }
