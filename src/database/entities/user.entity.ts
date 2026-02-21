@@ -1,5 +1,6 @@
-import { Column, DataType, Model, Table } from 'sequelize-typescript';
+import { Column, DataType, HasMany, Model, Table } from 'sequelize-typescript';
 import { RolesUser } from '../../guards/role.guard';
+import { PortfolioEntity } from './portfolio.entity';
 
 @Table({ tableName: 'users', paranoid: true })
 export class UserEntity extends Model {
@@ -28,7 +29,7 @@ export class UserEntity extends Model {
 
   @Column({
     type: DataType.ENUM,
-    values: [RolesUser.user, RolesUser.seller],
+    values: [RolesUser.user, RolesUser.master],
     allowNull: false,
     defaultValue: RolesUser.user,
   })
@@ -51,4 +52,7 @@ export class UserEntity extends Model {
     type: DataType.STRING,
   })
   declare verificationToken: string;
+
+  @HasMany(() => PortfolioEntity)
+  declare public portfolio: PortfolioEntity[];
 }

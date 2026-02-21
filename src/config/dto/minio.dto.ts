@@ -18,4 +18,7 @@ export class MinioDto {
 
   @IsString()
   minioBucket: string;
+
+  @IsString()
+  minioEndpoint: string;
 }
