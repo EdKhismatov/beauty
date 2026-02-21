@@ -1,11 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Op } from 'sequelize';
 import { CacheTime } from '../../cache/cache.constants';
 import { cacheMyPortfolio } from '../../cache/cache.keys';
 import { RedisService } from '../../cache/redis.service';
 import { PortfolioEntity } from '../../database/entities/portfolio.entity';
 import { UserEntity } from '../../database/entities/user.entity';
+import { FilesService } from '../../upload/files.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
+import { IdDto } from './dto/id.dto';
+import { IdPortfolioDto } from './dto/id-portfolio.dto';
 
 @Injectable()
 export class PortfolioService {
@@ -18,6 +22,8 @@ export class PortfolioService {
     private userEntity: typeof UserEntity,
 
     private readonly redisService: RedisService,
+
+    private readonly filesService: FilesService,
   ) {}
 
   async uploadWork(body: CreatePortfolioDto, user: UserEntity) {
@@ -47,5 +53,47 @@ export class PortfolioService {
     this.logger.log(`Записали в Redis`);
 
     return portfolio;
+  }
+
+  // удаление фото
+  async removePhoto(id: IdDto, user: UserEntity) {
+    const fileName = id.id;
+    const portfolioEntry = await this.portfolioEntity.findOne({
+      where: {
+        userId: user.id,
+        imageUrl: { [Op.contains]: [fileName] }, // Sequelize-магия поиска в массиве
+      },
+    });
+    if (!portfolioEntry) {
+      throw new NotFoundException(`Фото не найдено в вашем портфолио`);
+    }
+
+    portfolioEntry.imageUrl = portfolioEntry.imageUrl.filter((name) => name !== fileName);
+
+    await portfolioEntry.save();
+    await this.filesService.removeImage(id.id);
+
+    const cacheKey = cacheMyPortfolio(user.id);
+    await this.redisService.delete(cacheKey);
+
+    this.logger.log(`Фото ${fileName} успешно удалено`);
+    return { success: true };
+  }
+
+  // удаление портфолио
+  async removePortfolio(id: IdPortfolioDto, user: UserEntity) {
+    const portfolio = await this.portfolioEntity.findByPk(id.id);
+    if (!portfolio) {
+      throw new NotFoundException(`Портфолио не найдено`);
+    }
+    if (portfolio.userId !== user.id) {
+      throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
+    }
+    await Promise.all(portfolio.imageUrl.map((el) => this.filesService.removeImage(el)));
+    await portfolio.destroy();
+
+    const cacheKey = cacheMyPortfolio(user.id);
+    await this.redisService.delete(cacheKey);
+    return { success: true };
   }
 }

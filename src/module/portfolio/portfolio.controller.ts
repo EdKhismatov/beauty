@@ -1,4 +1,14 @@
-import { Controller, Get, InternalServerErrorException, Logger, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  InternalServerErrorException,
+  Logger,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { UserEntity } from '../../database/entities/user.entity';
@@ -9,6 +19,8 @@ import { RolesUser } from '../../guards/role.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { FilesService } from '../../upload/files.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
+import { IdDto } from './dto/id.dto';
+import { IdPortfolioDto } from './dto/id-portfolio.dto';
 import { PortfolioService } from './portfolio.service';
 
 @ApiTags('v1/portfolio')
@@ -54,7 +66,7 @@ export class PortfolioController {
     }
   }
 
-  // товары продавца
+  // портфолио мастера
   @UseGuards(AuthGuard, RolesGuard)
   @Roles([RolesUser.master, RolesUser.admin])
   @ApiOkResponse({ description: "Master's portfolio" })
@@ -62,5 +74,21 @@ export class PortfolioController {
   @Get('')
   async getMyProduct(@User() user: UserEntity) {
     return await this.portfolioService.getMyPortfolio(user);
+  }
+
+  // удаление определенной картинки
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles([RolesUser.master, RolesUser.admin])
+  @Delete(':id')
+  async removePhoto(@User() user: UserEntity, @Param() params: IdDto) {
+    return await this.portfolioService.removePhoto(params, user);
+  }
+
+  // удаление полностью портфолио
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles([RolesUser.master, RolesUser.admin])
+  @Delete('my/:id')
+  async removePortfolio(@User() user: UserEntity, @Param() params: IdPortfolioDto) {
+    return await this.portfolioService.removePortfolio(params, user);
   }
 }
