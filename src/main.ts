@@ -30,6 +30,8 @@ async function bootstrap() {
     },
   });
 
+  app.enableShutdownHooks();
+
   await app.startAllMicroservices();
 
   const fastifyInstance = app.getHttpAdapter().getInstance();
