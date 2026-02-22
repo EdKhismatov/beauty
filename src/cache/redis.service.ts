@@ -32,12 +32,27 @@ export class RedisService implements OnApplicationShutdown {
   }
 
   async deleteForPattern(pattern: string): Promise<number> {
-    const keys = await this.redis.keys(pattern);
-    if (keys.length > 0) {
-      await this.redis.del(keys);
-    }
+    let cursor = '0';
+    let totalDeleted = 0;
 
-    return keys.length;
+    this.logger.log(`Начинаем безопасную очистку кэша по маске: ${pattern}`);
+
+    do {
+      const { cursor: nextCursor, keys } = await this.redis.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100,
+      });
+
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        await this.redis.del(keys);
+        totalDeleted += keys.length;
+      }
+    } while (cursor !== '0');
+
+    this.logger.log(`Очистка завершена. Удалено ключей: ${totalDeleted}`);
+    return totalDeleted;
   }
 
   async onApplicationShutdown() {

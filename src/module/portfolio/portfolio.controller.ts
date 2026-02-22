@@ -1,15 +1,18 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   InternalServerErrorException,
   Logger,
   Param,
+  Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { UserEntity } from '../../database/entities/user.entity';
 import { Roles } from '../../decorators/roles.decorator';
@@ -19,8 +22,10 @@ import { RolesUser } from '../../guards/role.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { FilesService } from '../../upload/files.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
+import { GetPortfolioQueryDto } from './dto/get-portfolio.query.dto';
 import { IdDto } from './dto/id.dto';
 import { IdPortfolioDto } from './dto/id-portfolio.dto';
+import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 import { PortfolioService } from './portfolio.service';
 
 @ApiTags('v1/portfolio')
@@ -90,5 +95,23 @@ export class PortfolioController {
   @Delete('my/:id')
   async removePortfolio(@User() user: UserEntity, @Param() params: IdPortfolioDto) {
     return await this.portfolioService.removePortfolio(params, user);
+  }
+
+  // выводим все портфолио (с пагинацией)
+  @ApiCreatedResponse({ description: 'All portfolios are loaded' })
+  @ApiOperation({ summary: 'Портфолио загружены' })
+  @Get('all')
+  async getAllProjects(@Query() query: GetPortfolioQueryDto) {
+    return await this.portfolioService.getAllProjects(query);
+  }
+
+  // редактирование своего товара
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles([RolesUser.master, RolesUser.admin])
+  @ApiCreatedResponse({ description: 'Portfolio successfully edited' })
+  @ApiOperation({ summary: 'Редактирование портфолио' })
+  @Patch(':id')
+  async updateMyPortfolio(@Param() params: IdDto, @Body() dto: UpdatePortfolioDto, @User() user: UserEntity) {
+    return await this.portfolioService.updateMyPortfolio(params, dto, user);
   }
 }
