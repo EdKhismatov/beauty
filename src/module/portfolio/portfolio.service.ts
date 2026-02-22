@@ -10,12 +10,14 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { CacheTime } from '../../cache/cache.constants';
-import { cacheMyPortfolio } from '../../cache/cache.keys';
+import { cacheGetAllProjects, cacheMyPortfolio } from '../../cache/cache.keys';
 import { RedisService } from '../../cache/redis.service';
 import { PortfolioEntity } from '../../database/entities/portfolio.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { FilesService } from '../../upload/files.service';
 import { CreatePortfolioDto, IdDto, IdPortfolioDto } from './dto';
+import { GetPortfolioQueryDto } from './dto/get-portfolio.query.dto';
+import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 
 @Injectable()
 export class PortfolioService {
@@ -37,8 +39,9 @@ export class PortfolioService {
   async uploadWork(body: CreatePortfolioDto, user: UserEntity) {
     const product = await this.portfolioEntity.create({ ...body });
     this.logger.log(`Товар успешно создан`);
-    const key = cacheMyPortfolio(user.id);
-    await this.redisService.delete(key);
+
+    await this.clearPortfolioCache(user.id);
+
     return product;
   }
 
@@ -81,8 +84,7 @@ export class PortfolioService {
     await portfolioEntry.save();
     await this.filesService.removeImage(id.id);
 
-    const cacheKey = cacheMyPortfolio(user.id);
-    await this.redisService.delete(cacheKey);
+    await this.clearPortfolioCache(user.id);
 
     this.logger.log(`Фото ${fileName} успешно удалено`);
     return { success: true };
@@ -107,10 +109,9 @@ export class PortfolioService {
       await transaction.commit();
       await Promise.all(filesToDelete.map((el) => this.filesService.removeImage(el)));
 
-      const cacheKey = cacheMyPortfolio(user.id);
-      await this.redisService.delete(cacheKey);
+      await this.clearPortfolioCache(user.id);
 
-      this.logger.error(`Портфолио с id:${id.id} успешно удалено`);
+      this.logger.log(`Портфолио с id:${id.id} успешно удалено`);
       return { success: true };
     } catch (error) {
       await transaction.rollback();
@@ -118,5 +119,72 @@ export class PortfolioService {
       this.logger.error(`Ошибка при удалении портфолио: ${error.message}`);
       throw new InternalServerErrorException('Не удалось удалить портфолио');
     }
+  }
+
+  // выводим все портфолио
+  async getAllProjects(query: GetPortfolioQueryDto) {
+    const { page = 1, limit = 10, search } = query;
+    const offset = (page - 1) * limit;
+
+    const key = `${JSON.stringify(query)}`;
+    const fullKey = cacheGetAllProjects(key);
+    const cashPortfolio = await this.redisService.get(fullKey);
+
+    if (cashPortfolio) {
+      this.logger.log(`Достали из Redis`);
+      return cashPortfolio;
+    }
+
+    const where: any = {};
+    if (search) {
+      where.description = { [Op.iLike]: `%${search}%` };
+    }
+
+    const { rows, count } = await this.portfolioEntity.findAndCountAll({
+      where,
+      limit,
+      offset,
+      raw: true,
+      order: [['createdAt', 'DESC']],
+    });
+
+    const portfolioAll = {
+      total: count,
+      currentPage: page,
+      totalPages: Math.ceil(count / limit),
+      portfolio: rows,
+    };
+
+    await this.redisService.set(fullKey, portfolioAll, { EX: CacheTime.min5 });
+    this.logger.log(`Записали в Redis`);
+
+    return portfolioAll;
+  }
+
+  // редактирование описания портфолио
+  async updateMyPortfolio(idDto: IdDto, dto: UpdatePortfolioDto, user: UserEntity) {
+    const product = await this.portfolioEntity.findByPk(idDto.id);
+    if (!product) {
+      throw new NotFoundException(`Портфолио с ID ${idDto.id} не найден`);
+    }
+
+    if (product.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException(`У вас нет прав на редактирование этого товара`);
+    }
+
+    await product.update(dto);
+    this.logger.log(`Описание портфолио успешно изменено`);
+
+    await this.clearPortfolioCache(user.id);
+
+    return product;
+  }
+
+  private async clearPortfolioCache(userId: string): Promise<void> {
+    await Promise.all([
+      this.redisService.delete(cacheMyPortfolio(userId)),
+      this.redisService.deleteForPattern(cacheGetAllProjects() + '*'),
+    ]);
+    this.logger.log(`Кэш портфолио для пользователя ${userId} и общий список очищены`);
   }
 }
