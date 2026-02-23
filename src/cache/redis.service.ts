@@ -50,7 +50,6 @@ export class RedisService implements OnApplicationShutdown {
         totalDeleted += keys.length;
       }
     } while (cursor !== '0');
-
     this.logger.log(`Очистка завершена. Удалено ключей: ${totalDeleted}`);
     return totalDeleted;
   }

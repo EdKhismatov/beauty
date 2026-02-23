@@ -1,6 +1,9 @@
 import { Column, DataType, HasMany, Model, Table } from 'sequelize-typescript';
 import { RolesUser } from '../../guards/role.guard';
+import { AppointmentEntity } from './appointment.entity';
 import { PortfolioEntity } from './portfolio.entity';
+import { ScheduleEntity } from './schedule.entity';
+import { ServiceEntity } from './service.entity';
 
 @Table({ tableName: 'users', paranoid: true })
 export class UserEntity extends Model {
@@ -52,6 +55,22 @@ export class UserEntity extends Model {
     type: DataType.STRING,
   })
   declare verificationToken: string;
+
+  // Связь с услугами (только для мастеров)
+  @HasMany(() => ServiceEntity)
+  services: ServiceEntity[];
+
+  // Связь с расписанием (только для мастеров)
+  @HasMany(() => ScheduleEntity)
+  schedules: ScheduleEntity[];
+
+  // Записи, где пользователь выступает как МАСТЕР
+  @HasMany(() => AppointmentEntity, 'masterId')
+  appointmentsAsMaster: AppointmentEntity[];
+
+  // Записи, где пользователь выступает как КЛИЕНТ
+  @HasMany(() => AppointmentEntity, 'clientId')
+  appointmentsAsClient: AppointmentEntity[];
 
   @HasMany(() => PortfolioEntity)
   declare public portfolio: PortfolioEntity[];
