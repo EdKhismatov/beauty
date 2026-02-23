@@ -6,20 +6,18 @@ import { PortfolioEntity } from '../../database/entities/portfolio.entity';
 import { ScheduleEntity } from '../../database/entities/schedule.entity';
 import { ServiceEntity } from '../../database/entities/service.entity';
 import { UserEntity } from '../../database/entities/user.entity';
-import { FilesModule } from '../../upload/files.module';
 import { AuthModule } from '../auth/auth.module';
-import { PortfolioController } from './portfolio.controller';
-import { PortfolioService } from './portfolio.service';
+import { ServicesController } from './services.controller';
+import { ServicesService } from './services.service';
 
 @Module({
   imports: [
     SequelizeModule.forFeature([UserEntity, PortfolioEntity, ServiceEntity, ScheduleEntity, AppointmentEntity]),
-    FilesModule,
     AuthModule,
     RedisModule,
   ],
-  controllers: [PortfolioController],
-  providers: [PortfolioService],
-  exports: [PortfolioService, SequelizeModule],
+  controllers: [ServicesController],
+  providers: [ServicesService],
+  exports: [ServicesService],
 })
-export class PortfolioModule {}
+export class ServicesModule {}
