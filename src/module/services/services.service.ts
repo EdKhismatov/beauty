@@ -64,9 +64,8 @@ export class ServicesService {
 
   // удаление услуги
   async removeMasterServices(id: IdDto, user: UserEntity) {
-    const transaction = await this.sequelize.transaction();
     try {
-      const service = await this.serviceEntity.findByPk(id.id, { transaction });
+      const service = await this.serviceEntity.findByPk(id.id);
       if (!service) {
         this.logger.error(`Услуга с id:${id.id} не найдена`);
         throw new NotFoundException(`Услуга не найдена`);
@@ -75,25 +74,21 @@ export class ServicesService {
         this.logger.error(`Недостаточно прав для удаления данной услуги`);
         throw new ForbiddenException('У вас нет прав для удаления данной услуги');
       }
-      await service.destroy({ transaction });
-
-      await transaction.commit();
+      await service.destroy();
 
       this.logger.log(`Услуга с id:${id.id} успешно удалено`);
       return { success: true };
     } catch (error) {
-      await transaction.rollback();
       if (error instanceof HttpException) throw error;
       this.logger.error(`Ошибка при удалении услуги: ${error.message}`);
-      throw new InternalServerErrorException('Не удалось удалить портфолио');
+      throw new InternalServerErrorException('Не удалось удалить услугу');
     }
   }
 
   // редактирование услуги
   async updateMyServices(id: IdDto, dto: UpdateServicesDto, user: UserEntity) {
-    const transaction = await this.sequelize.transaction();
     try {
-      const service = await this.serviceEntity.findByPk(id.id, { transaction });
+      const service = await this.serviceEntity.findByPk(id.id);
       if (!service) {
         this.logger.error(`Услуга с id:${id.id} не найдена`);
         throw new NotFoundException(`Услуга не найдена`);
@@ -102,15 +97,10 @@ export class ServicesService {
         this.logger.error(`Недостаточно прав для редактирования данной услуги`);
         throw new ForbiddenException('У вас нет прав для редактирования данной услуги');
       }
-      await service.update(dto, { transaction });
-      this.logger.log(`Описание услуги успешно изменено`);
-
-      await transaction.commit();
-
+      await service.update(dto);
       this.logger.log(`Услуга с id:${id.id} успешно изменена`);
       return service;
     } catch (error) {
-      await transaction.rollback();
       if (error instanceof HttpException) throw error;
       this.logger.error(`Ошибка при редактировании услуги: ${error.message}`);
       throw new InternalServerErrorException('Не удалось редактировать услугу');
