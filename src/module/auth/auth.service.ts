@@ -54,11 +54,10 @@ export class AuthService {
     const rawPassword = dto.password;
     const hashedPassword = await hash(rawPassword, rounds);
 
-    const newUser: UserCreateDto = { ...dto, password: hashedPassword };
+    const newUser = { ...dto, password: hashedPassword, verificationToken: token };
 
-    const user = await this.userService.register(newUser as UserCreateDto);
+    const user = await this.userService.register(newUser);
 
-    await user.update({ verificationToken: token });
     const { password, ...result } = user.get({ plain: true });
 
     this.logger.log(`Регистрация нового пользователя ${dto.email}`);
