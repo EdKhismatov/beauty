@@ -1,9 +1,11 @@
-import { Column, DataType, HasMany, Model, Table } from 'sequelize-typescript';
+import { BelongsTo, Column, DataType, ForeignKey, HasMany, HasOne, Model, Table } from 'sequelize-typescript';
 import { RolesUser } from '../../guards/role.guard';
-import { AppointmentEntity } from './appointment.entity';
-import { PortfolioEntity } from './portfolio.entity';
-import { ScheduleEntity } from './schedule.entity';
-import { ServiceEntity } from './service.entity';
+import { BookingEntity } from './bookings.entity';
+import { CitiesEntity } from './cities.entity';
+import { FavoritesEntity } from './favorites.entity';
+import { MasterProfileEntity } from './master-profile.entity';
+import { NotificationsEntity } from './notifications.entity';
+import { ReviewsEntity } from './reviews.entity';
 
 @Table({ tableName: 'users', paranoid: true })
 export class UserEntity extends Model {
@@ -14,14 +16,17 @@ export class UserEntity extends Model {
   })
   declare public id: string;
 
-  @Column({ type: DataType.STRING, allowNull: false })
-  declare public name: string;
-
-  @Column({ type: DataType.STRING, allowNull: false, unique: true })
+  @Column({ type: DataType.STRING, allowNull: true, unique: true })
   declare public email: string;
 
   @Column({ type: DataType.STRING, allowNull: false })
+  declare public fullName: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
   declare public password: string;
+
+  @Column({ type: DataType.STRING, allowNull: true })
+  declare public avatarUrl: string;
 
   @Column({
     type: DataType.BOOLEAN,
@@ -39,39 +44,45 @@ export class UserEntity extends Model {
   declare public role: RolesUser;
 
   @Column({
-    type: DataType.DATE,
-    allowNull: true,
-  })
-  declare deletedAt: Date;
-
-  @Column({
     type: DataType.BOOLEAN,
-    defaultValue: false,
     allowNull: false,
+    defaultValue: false,
   })
-  declare isVerified: boolean;
+  declare public isVerified: boolean;
 
   @Column({
     type: DataType.STRING,
+    allowNull: true,
   })
-  declare verificationToken: string;
+  declare public verificationToken: string;
 
-  // Связь с услугами (только для мастеров)
-  @HasMany(() => ServiceEntity)
-  services: ServiceEntity[];
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  declare public lastLoginAt: Date;
 
-  // Связь с расписанием (только для мастеров)
-  @HasMany(() => ScheduleEntity)
-  schedules: ScheduleEntity[];
+  // FK хранится в таблице users
+  @ForeignKey(() => CitiesEntity)
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare public cityId: string;
 
-  // Записи, где пользователь выступает как МАСТЕР
-  @HasMany(() => AppointmentEntity, 'masterId')
-  appointmentsAsMaster: AppointmentEntity[];
+  // Пользователь принадлежит городу
+  @BelongsTo(() => CitiesEntity, { foreignKey: 'cityId', as: 'city' })
+  public city: CitiesEntity;
 
-  // Записи, где пользователь выступает как КЛИЕНТ
-  @HasMany(() => AppointmentEntity, 'clientId')
-  appointmentsAsClient: AppointmentEntity[];
+  @HasOne(() => MasterProfileEntity, { foreignKey: 'userId', as: 'masterProfile' })
+  public masterProfile: MasterProfileEntity;
 
-  @HasMany(() => PortfolioEntity)
-  declare public portfolio: PortfolioEntity[];
+  @HasMany(() => BookingEntity, { foreignKey: 'clientId', as: 'bookings' })
+  public bookings: BookingEntity[];
+
+  @HasMany(() => ReviewsEntity, { foreignKey: 'clientId', as: 'reviews' })
+  public reviews: ReviewsEntity[];
+
+  @HasMany(() => FavoritesEntity, { foreignKey: 'userId', as: 'favorites' })
+  public favorites: FavoritesEntity[];
+
+  @HasMany(() => NotificationsEntity, { foreignKey: 'userId', as: 'notifications' })
+  public notifications: NotificationsEntity[];
 }

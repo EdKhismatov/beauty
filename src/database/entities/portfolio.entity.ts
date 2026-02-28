@@ -1,6 +1,8 @@
 import { BelongsTo, Column, DataType, ForeignKey, Model, Table } from 'sequelize-typescript';
-import { UserEntity } from './user.entity';
+import { MasterProfileEntity } from './master-profile.entity';
+import { ServicesEntity } from './services.entity';
 
+// портфолио мастера
 @Table({ tableName: 'master_portfolio', paranoid: true })
 export class PortfolioEntity extends Model {
   @Column({
@@ -10,22 +12,42 @@ export class PortfolioEntity extends Model {
   })
   declare public id: string;
 
+  @ForeignKey(() => MasterProfileEntity)
+  @Column({ type: DataType.UUID, allowNull: false })
+  declare masterId: string;
+
+  @BelongsTo(() => MasterProfileEntity, { foreignKey: 'masterId', as: 'master' })
+  public master: MasterProfileEntity;
+
+  @ForeignKey(() => ServicesEntity)
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare serviceId: string | null;
+
+  @BelongsTo(() => ServicesEntity, { foreignKey: 'serviceId', as: 'service' })
+  public service: ServicesEntity;
+
+  @Column({ type: DataType.STRING, allowNull: false })
+  declare public imageUrl: string;
+
   @Column({
-    type: DataType.ARRAY(DataType.STRING),
-    defaultValue: [],
+    type: DataType.STRING,
+    allowNull: true,
+    comment: 'Подпись к фото — мастер описывает технику, материалы, сложность работы',
   })
-  declare public imageUrl: string[]; // Путь к файлу в MinIO
+  declare public caption: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
-  declare public description: string;
-
-  @ForeignKey(() => UserEntity)
   @Column({
-    type: DataType.UUID,
+    type: DataType.INTEGER,
+    allowNull: true,
+    comment: 'Счётчик лайков — кэшируется здесь, чтобы не делать COUNT() при каждом запросе',
+  })
+  declare public likesCount: number;
+
+  @Column({
+    type: DataType.BOOLEAN,
     allowNull: false,
+    defaultValue: false,
+    comment: 'Обложка профиля — одно главное фото видно в карточке мастера в каталоге',
   })
-  declare public userId: string;
-
-  @BelongsTo(() => UserEntity)
-  declare public master: UserEntity;
+  declare public isCover: boolean;
 }

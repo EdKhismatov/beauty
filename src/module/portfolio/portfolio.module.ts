@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { RedisModule } from '../../cache/redis.module';
-import { AppointmentEntity } from '../../database/entities/appointment.entity';
 import { PortfolioEntity } from '../../database/entities/portfolio.entity';
 import { ScheduleEntity } from '../../database/entities/schedule.entity';
-import { ServiceEntity } from '../../database/entities/service.entity';
+import { ServicesEntity } from '../../database/entities/services.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { FilesModule } from '../../upload/files.module';
 import { AuthModule } from '../auth/auth.module';
@@ -13,7 +12,7 @@ import { PortfolioService } from './portfolio.service';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([UserEntity, PortfolioEntity, ServiceEntity, ScheduleEntity, AppointmentEntity]),
+    SequelizeModule.forFeature([UserEntity, PortfolioEntity, ServicesEntity, ScheduleEntity]),
     FilesModule,
     AuthModule,
     RedisModule,

@@ -67,7 +67,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Get('verify')
   async confirms(@Query('token') token: string) {
-    console.log('token', token);
     return await this.authService.confirms(token);
   }
 

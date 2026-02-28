@@ -1,16 +1,8 @@
-import {
-  ForbiddenException,
-  HttpException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { ServiceEntity } from '../../database/entities/service.entity';
+import { ServicesEntity } from '../../database/entities/services.entity';
 import { UserEntity } from '../../database/entities/user.entity';
-import { RolesUser } from '../../guards/role.guard';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { IdDto } from './dto/id.dto';
 import { UpdateServicesDto } from './dto/update-services.dto';
@@ -19,8 +11,8 @@ import { UpdateServicesDto } from './dto/update-services.dto';
 export class ServicesService {
   private readonly logger = new Logger(ServicesService.name);
   constructor(
-    @InjectModel(ServiceEntity)
-    private serviceEntity: typeof ServiceEntity,
+    @InjectModel(ServicesEntity)
+    private serviceEntity: typeof ServicesEntity,
 
     private readonly sequelize: Sequelize,
   ) {}
@@ -70,10 +62,10 @@ export class ServicesService {
         this.logger.error(`Услуга с id:${id.id} не найдена`);
         throw new NotFoundException(`Услуга не найдена`);
       }
-      if (service.userId !== user.id && user.role !== RolesUser.admin) {
-        this.logger.error(`Недостаточно прав для удаления данной услуги`);
-        throw new ForbiddenException('У вас нет прав для удаления данной услуги');
-      }
+      // if (service.userId !== user.id && user.role !== RolesUser.admin) {
+      //   this.logger.error(`Недостаточно прав для удаления данной услуги`);
+      //   throw new ForbiddenException('У вас нет прав для удаления данной услуги');
+      // }
       await service.destroy();
 
       this.logger.log(`Услуга с id:${id.id} успешно удалено`);
@@ -93,10 +85,10 @@ export class ServicesService {
         this.logger.error(`Услуга с id:${id.id} не найдена`);
         throw new NotFoundException(`Услуга не найдена`);
       }
-      if (service.userId !== user.id && user.role !== RolesUser.admin) {
-        this.logger.error(`Недостаточно прав для редактирования данной услуги`);
-        throw new ForbiddenException('У вас нет прав для редактирования данной услуги');
-      }
+      // if (service.userId !== user.id && user.role !== RolesUser.admin) {
+      //   this.logger.error(`Недостаточно прав для редактирования данной услуги`);
+      //   throw new ForbiddenException('У вас нет прав для редактирования данной услуги');
+      // }
       await service.update(dto);
       this.logger.log(`Услуга с id:${id.id} успешно изменена`);
       return service;

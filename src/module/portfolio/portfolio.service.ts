@@ -1,11 +1,4 @@
-import {
-  ForbiddenException,
-  HttpException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -79,7 +72,7 @@ export class PortfolioService {
       throw new NotFoundException(`Фото не найдено в вашем портфолио`);
     }
 
-    portfolioEntry.imageUrl = portfolioEntry.imageUrl.filter((name) => name !== fileName);
+    // portfolioEntry.imageUrl = portfolioEntry.imageUrl.filter((name) => name !== fileName);
 
     await portfolioEntry.save();
     await this.filesService.removeImage(id.id);
@@ -99,10 +92,10 @@ export class PortfolioService {
         this.logger.error(`Портфолио с id:${id.id} не найдено`);
         throw new NotFoundException(`Портфолио не найдено`);
       }
-      if (portfolio.userId !== user.id) {
-        this.logger.error(`Недостаточно прав для удаления данного портфолио`);
-        throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
-      }
+      // if (portfolio.userId !== user.id) {
+      //   this.logger.error(`Недостаточно прав для удаления данного портфолио`);
+      //   throw new ForbiddenException('У вас нет прав для удаления этого портфолио');
+      // }
       const filesToDelete = [...portfolio.imageUrl];
       await portfolio.destroy({ transaction });
 
@@ -168,16 +161,16 @@ export class PortfolioService {
       throw new NotFoundException(`Портфолио с ID ${idDto.id} не найден`);
     }
 
-    if (product.userId !== user.id && user.role !== 'admin') {
-      throw new ForbiddenException(`У вас нет прав на редактирование этого товара`);
-    }
+    // if (product.userId !== user.id && user.role !== 'admin') {
+    //   throw new ForbiddenException(`У вас нет прав на редактирование этого товара`);
+    // }
+    //
+    // await product.update(dto);
+    // this.logger.log(`Описание портфолио успешно изменено`);
+    //
+    // await this.clearPortfolioCache(user.id);
 
-    await product.update(dto);
-    this.logger.log(`Описание портфолио успешно изменено`);
-
-    await this.clearPortfolioCache(user.id);
-
-    return product;
+    return 'product';
   }
 
   private async clearPortfolioCache(userId: string): Promise<void> {
