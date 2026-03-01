@@ -25,4 +25,9 @@ export class UserService {
   async findByToken(verificationToken: string): Promise<UserEntity | null> {
     return this.userModel.findOne({ where: { verificationToken } });
   }
+
+  async updatePasswordByEmail(email: string, hashedPassword: string) {
+    const [affectedCount] = await this.userModel.update({ password: hashedPassword }, { where: { email } });
+    return affectedCount;
+  }
 }

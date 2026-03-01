@@ -1,5 +1,5 @@
 import { FastifyRequest } from 'fastify';
-import { UserEntity } from '../../database/entities/user.entity';
+import { UserEntity } from '../../database/entities';
 
 export type JwtPayload = {
   id: UserEntity['id'];

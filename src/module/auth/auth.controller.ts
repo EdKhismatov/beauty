@@ -1,11 +1,17 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query, Req, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
+import { User } from '../../decorators/user.decorator';
 import { AuthGuard } from '../../guards/jwt.guard';
 import { AuthService } from './auth.service';
-import type { AuthenticatedRequest } from './auth.types';
-import { ChangePasswordDto, LoginDto, RequestPasswordResetDto, RestorePasswordDto, UserCreateDto } from './dto';
-import { TokenDto } from './dto/token.dto';
+import {
+  ChangePasswordDto,
+  LoginDto,
+  RequestPasswordResetDto,
+  RestorePasswordDto,
+  TokenDto,
+  UserCreateDto,
+} from './dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -35,7 +41,6 @@ export class AuthController {
   // логаут
   @ApiCreatedResponse({ description: 'RefreshToken deleted ' })
   @ApiResponse({ status: 200, description: 'Успешный выход' })
-  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   async logout(@Body() refreshToken: TokenDto) {
@@ -43,16 +48,17 @@ export class AuthController {
     return true;
   }
 
-  // Удаление рефреш токена
-  @ApiCreatedResponse({ description: 'RefreshToken deleted ' })
-  @ApiResponse({ status: 200, description: 'Успешный выход' })
+  // Профиль
+  @ApiCreatedResponse({ description: 'Profile' })
+  @ApiResponse({ status: 200, description: 'Получение юзера' })
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   @Get('profile')
-  async profile(@Request() req: AuthenticatedRequest) {
-    return await this.authService.profile(req.user.id);
+  async profile(@User('id') id: string) {
+    return await this.authService.profile(id);
   }
 
+  // refresh
   @ApiCreatedResponse({ description: 'New refreshtoken and accesstoken' })
   @ApiResponse({ status: 200, description: 'Успешно созданы refresh и access токен' })
   @HttpCode(HttpStatus.OK)
@@ -70,17 +76,17 @@ export class AuthController {
     return await this.authService.confirms(token);
   }
 
-  // Изменениние пароля
+  // Изменение пароля
   @UseGuards(AuthGuard)
   @ApiCreatedResponse({ description: 'Сhange password' })
   @ApiResponse({ status: 200, description: 'Пароль изменен' })
   @HttpCode(HttpStatus.OK)
   @Put('change')
-  async change(@Body() body: ChangePasswordDto) {
-    return await this.authService.change(body);
+  async change(@Body() body: ChangePasswordDto, @User('id') id: string) {
+    return await this.authService.change(body, id);
   }
 
-  // отправка кода для восстановления почты
+  // отправка кода для восстановления пароля
   @ApiCreatedResponse({ description: 'Sending a password recovery code' })
   @ApiResponse({ status: 200, description: 'Код отправлен' })
   @HttpCode(HttpStatus.OK)
@@ -93,7 +99,7 @@ export class AuthController {
   @ApiCreatedResponse({ description: 'Reinstatement of the president' })
   @ApiResponse({ status: 200, description: 'Пароль обновлен' })
   @HttpCode(HttpStatus.OK)
-  @Post('change')
+  @Post('reset-password')
   async restorePassword(@Body() body: RestorePasswordDto) {
     return await this.authService.restorePassword(body);
   }
