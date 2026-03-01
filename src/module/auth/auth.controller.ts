@@ -63,8 +63,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Успешно созданы refresh и access токен' })
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(@Body() refreshToken: TokenDto) {
-    return await this.authService.refresh(refreshToken);
+  async refresh(@User('id') id: string, @Body() refreshToken: TokenDto) {
+    return await this.authService.refresh(id, refreshToken);
   }
 
   // Подтверждение почты

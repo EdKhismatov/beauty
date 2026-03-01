@@ -138,7 +138,11 @@ export class AuthService {
     await user.update({ lastLoginAt: new Date() });
     const tokens = await this.upsertTokenPair(user);
     this.logAttempt(true, 'Успешный вход', IpAddress, dto.email);
-    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
+    await this.redisService.set(
+      cacheRefreshToken(user.id, tokens.refreshToken),
+      { id: user.id },
+      { EX: CacheTime.day7 },
+    );
 
     this.logger.log(`refresh токен записан в базу`);
     this.logger.log(`Пользователь найден ${dto.email}`);
@@ -148,7 +152,8 @@ export class AuthService {
 
   // логаут
   async logout(refreshToken: string) {
-    return await this.redisService.delete(cacheRefreshToken(refreshToken));
+    const payload = this.decode(refreshToken);
+    await this.redisService.delete(cacheRefreshToken(payload.id, refreshToken));
   }
 
   // профиль
@@ -163,8 +168,8 @@ export class AuthService {
   }
 
   // refresh
-  async refresh(refreshtoken: TokenDto) {
-    const cacheKey = cacheRefreshToken(refreshtoken.token);
+  async refresh(id: string, refreshtoken: TokenDto) {
+    const cacheKey = cacheRefreshToken(id, refreshtoken.token);
 
     const session = await this.redisService.get<{ id: string }>(cacheKey);
 
@@ -173,7 +178,7 @@ export class AuthService {
       throw new UnauthorizedException('Session expired or token reused');
     }
 
-    await this.redisService.delete(cacheRefreshToken(refreshtoken.token));
+    await this.redisService.delete(cacheRefreshToken(id, refreshtoken.token));
     const user = await this.userService.getById(session.id);
 
     if (!user) {
@@ -189,7 +194,7 @@ export class AuthService {
     const tokens = await this.upsertTokenPair(user);
     this.logger.log(`Токены обновлены`);
 
-    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
+    await this.redisService.set(cacheRefreshToken(id, tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
     this.logger.log(`Обновленные токены занесены в базу`);
     return tokens;
   }
