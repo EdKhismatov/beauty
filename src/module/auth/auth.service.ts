@@ -130,9 +130,17 @@ export class AuthService {
     }
 
     if (!user.isVerified) {
-      this.logger.log(`Попытка входа с не подтвержденной почтой: ${user.email}`);
-      // Здесь можно отправить письмо повторно, если нужно
-      throw new UnauthorizedException('Пожалуйста, подтвердите вашу почту');
+      const token = randomBytes(32).toString('hex');
+      const url = `http://localhost:${appConfig.port}/auth/verify?token=${token}`;
+      try {
+        await this.emailService.sendWelcomeEmail(user.email, url);
+        await user.update({ verificationToken: token });
+        this.logger.log(`Повторное письмо отправлено на ${user.email}`);
+      } catch (e) {
+        this.logger.error(`Не удалось отправить повторное письмо: ${e.message}`);
+      }
+      this.logAttempt(false, 'Почта не подтверждена', IpAddress, dto.email);
+      throw new UnauthorizedException('Почта не подтверждена');
     }
 
     await user.update({ lastLoginAt: new Date() });
@@ -168,34 +176,36 @@ export class AuthService {
   }
 
   // refresh
-  async refresh(id: string, refreshtoken: TokenDto) {
-    const cacheKey = cacheRefreshToken(id, refreshtoken.token);
+  async refresh(refreshtoken: TokenDto) {
+    const payload = this.decode(refreshtoken.token);
+    const cachekey = cacheRefreshToken(payload.id, refreshtoken.token);
 
-    const session = await this.redisService.get<{ id: string }>(cacheKey);
+    const session = await this.redisService.get<{ id: string }>(cachekey);
 
     if (!session) {
       this.logger.warn(`Попытка использования невалидного Refresh токена`);
       throw new UnauthorizedException('Session expired or token reused');
     }
 
-    await this.redisService.delete(cacheRefreshToken(id, refreshtoken.token));
+    await this.redisService.delete(cachekey);
     const user = await this.userService.getById(session.id);
 
     if (!user) {
       throw new UnauthorizedException('User is inactive or not found');
     }
-    const { password, ...result } = user.get({ plain: true });
 
-    if (!result.active) {
-      this.logger.log(`Вы заблокированы`);
+    if (!user.active) {
       throw new UnauthorizedException('You are blocked');
     }
 
     const tokens = await this.upsertTokenPair(user);
     this.logger.log(`Токены обновлены`);
 
-    await this.redisService.set(cacheRefreshToken(id, tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
-    this.logger.log(`Обновленные токены занесены в базу`);
+    await this.redisService.set(
+      cacheRefreshToken(user.id, tokens.refreshToken),
+      { id: user.id },
+      { EX: CacheTime.day7 },
+    );
     return tokens;
   }
 
