@@ -25,7 +25,7 @@ import {
         autoLoadModels: true,
         synchronize: true,
         logging: false,
-        sync: { alter: true },
+        // sync: { alter: true },
         models: [
           UserEntity,
           CitiesEntity,

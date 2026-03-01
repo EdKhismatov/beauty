@@ -4,11 +4,9 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './module/auth/auth.module';
 import { EmailModule } from './module/mailer/email.module';
 import { MinioModule } from './module/minio/minio.module';
-import { PortfolioModule } from './module/portfolio/portfolio.module';
-import { ServicesModule } from './module/services/services.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, EmailModule, MinioModule, PortfolioModule, ServicesModule],
+  imports: [DatabaseModule, AuthModule, EmailModule, MinioModule],
   controllers: [AppController],
   providers: [],
 })
