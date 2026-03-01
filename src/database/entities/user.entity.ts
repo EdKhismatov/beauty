@@ -20,7 +20,7 @@ export class UserEntity extends Model {
   declare public email: string;
 
   @Column({ type: DataType.STRING, allowNull: false })
-  declare public fullName: string;
+  declare public name: string;
 
   @Column({ type: DataType.STRING, allowNull: false })
   declare public password: string;

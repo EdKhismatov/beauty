@@ -14,12 +14,18 @@ import { CacheTime } from '../../cache/cache.constants';
 import { cacheKey, cacheRateLimit, cacheRefreshToken } from '../../cache/cache.keys';
 import { RedisService } from '../../cache/redis.service';
 import { appConfig } from '../../config';
-import { UserEntity } from '../../database/entities/user.entity';
+import { UserEntity } from '../../database/entities';
 import { EmailService } from '../mailer/email.service';
 import { UserService } from '../users/user.service';
 import { JwtPayload, TokenPair } from './auth.types';
-import { ChangePasswordDto, LoginDto, RequestPasswordResetDto, RestorePasswordDto, UserCreateDto } from './dto';
-import { TokenDto } from './dto/token.dto';
+import {
+  ChangePasswordDto,
+  LoginDto,
+  RequestPasswordResetDto,
+  RestorePasswordDto,
+  TokenDto,
+  UserCreateDto,
+} from './dto';
 
 @Injectable()
 export class AuthService {
@@ -35,42 +41,67 @@ export class AuthService {
   async register(dto: UserCreateDto) {
     const domain = dto.email.split('@')[1];
     const isBad = await this.redisService.get(`bad_domain:${domain}`);
-
     if (isBad) {
       throw new BadRequestException('Использование временных доменов запрещено!');
     }
 
+    const rounds = 10;
+    const hashedPassword = await hash(dto.password, rounds);
     const token = randomBytes(32).toString('hex');
+    const url = `http://localhost:${appConfig.port}/auth/verify?token=${token}`;
 
+    // 2. Ищем существующего юзера
     const userPresence = await this.userService.findOneByEmail(dto.email);
 
     if (userPresence) {
-      this.logger.log(`Пользователь с логином ${dto.email} уже существует`);
-      throw new ConflictException(`A user with this login already exists.`);
+      if (userPresence.isVerified) {
+        throw new ConflictException('A user with this login already exists.');
+      }
+
+      await userPresence.update({
+        name: dto.name,
+        password: hashedPassword,
+        verificationToken: token,
+      });
+
+      try {
+        this.rabbitClient.emit('send_welcome_email', { email: userPresence.email, url });
+        this.logger.log(`Письмо повторно отправлено в RabbitMQ для ${dto.email}`);
+      } catch (error) {
+        this.logger.error(`Ошибка отправки письма`, error.message);
+      }
+
+      const { password, ...result } = userPresence.get({ plain: true });
+      return result;
     }
-
-    // хешируем пароль
-    const rounds = 10;
-    const rawPassword = dto.password;
-    const hashedPassword = await hash(rawPassword, rounds);
-
-    const newUser = { ...dto, password: hashedPassword, verificationToken: token };
-
-    const user = await this.userService.register(newUser);
-
-    const { password, ...result } = user.get({ plain: true });
-
-    this.logger.log(`Регистрация нового пользователя ${dto.email}`);
-    const url = `http://localhost:${appConfig.port}/auth/verify?token=${token}`;
+    // новый юзер
     try {
-      const payload = { email: user.email, url };
-      this.rabbitClient.emit('send_welcome_email', payload);
-      this.logger.log(`Письмо отправлено в RabbitMQ`);
-    } catch (error) {
-      this.logger.log(`Ошибка,письмо не отправлено`, error.message);
-    }
+      const newUser = {
+        ...dto,
+        password: hashedPassword,
+        verificationToken: token,
+      };
+      const user = await this.userService.register({ ...newUser });
 
-    return result;
+      const { password, ...result } = user.get({ plain: true });
+
+      this.logger.log(`Регистрация нового пользователя ${dto.email}`);
+
+      try {
+        this.rabbitClient.emit('send_welcome_email', { email: user.email, url });
+        this.logger.log(`Письмо отправлено в RabbitMQ`);
+      } catch (error) {
+        this.logger.error(`Ошибка отправки письма`, error.message);
+      }
+
+      return result;
+    } catch (error) {
+      // 5. Страховка от race condition
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        throw new ConflictException('A user with this login already exists.');
+      }
+      throw error;
+    }
   }
 
   private logAttempt = (success: boolean, result: string, ip: string, email: string) => {
@@ -104,9 +135,10 @@ export class AuthService {
       throw new UnauthorizedException('Пожалуйста, подтвердите вашу почту');
     }
 
+    await user.update({ lastLoginAt: new Date() });
     const tokens = await this.upsertTokenPair(user);
     this.logAttempt(true, 'Успешный вход', IpAddress, dto.email);
-    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day8 });
+    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
 
     this.logger.log(`refresh токен записан в базу`);
     this.logger.log(`Пользователь найден ${dto.email}`);
@@ -126,10 +158,6 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     const { password, ...result } = user.get({ plain: true });
-    if (!result.active) {
-      this.logger.log(`Вы заблокированы`);
-      throw new UnauthorizedException('You are blocked');
-    }
     this.logger.log(`Профиль по id найден`);
     return result;
   }
@@ -161,7 +189,7 @@ export class AuthService {
     const tokens = await this.upsertTokenPair(user);
     this.logger.log(`Токены обновлены`);
 
-    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day8 });
+    await this.redisService.set(cacheRefreshToken(tokens.refreshToken), { id: user.id }, { EX: CacheTime.day7 });
     this.logger.log(`Обновленные токены занесены в базу`);
     return tokens;
   }
@@ -172,9 +200,9 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Ссылка недействительна или уже была использована');
     }
+
     await user.update({ isVerified: true, verificationToken: null });
     this.logger.log(`Email ${user.email} успешно верифицирован`);
-
     return { message: 'Почта подтверждена. Теперь вы можете войти в систему.' };
   }
 
@@ -214,10 +242,9 @@ export class AuthService {
   }
 
   // изменение пароля
-  async change(dto: ChangePasswordDto) {
-    const user = await UserEntity.findOne({
-      where: { email: dto.email },
-    });
+  async change(dto: ChangePasswordDto, id: string) {
+    const user = await this.userService.getById(id);
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -233,14 +260,14 @@ export class AuthService {
     user.password = await hash(dto.newPassword, rounds);
     await user.save();
 
-    this.logger.log(`Пароль пользователя ${dto.email} изменен`);
+    this.logger.log(`Пароль пользователя ${user.email} изменен`);
     return {
       mail: user.email,
       message: 'Password updated successfully',
     };
   }
 
-  // Отправка кода для восстановления почты
+  // Отправка кода для восстановления пароля
   async requestPasswordReset(body: RequestPasswordResetDto) {
     const throttleKey = cacheRateLimit(body.email);
     const isThrottled = await this.redisService.get(throttleKey);
@@ -250,12 +277,12 @@ export class AuthService {
       return { success: false, message: 'Попробуйте позже (не чаще раза в минуту)' };
     }
 
-    const user = await UserEntity.findOne({ where: { email: body.email } });
+    const user = await this.userService.findOneByEmail(body.email);
     if (!user) {
       this.logger.log(`Попытка восстановления пароля для несуществующей почты: ${body.email}`);
       return { success: true };
     }
-    const keys = randomBytes(6).toString('hex');
+    const keys = ((parseInt(randomBytes(3).toString('hex'), 16) % 900000) + 100000).toString();
     const cacheKeys = cacheKey(keys);
     await this.redisService.set(cacheKeys, { email: body.email }, { EX: 180 });
 
@@ -288,7 +315,7 @@ export class AuthService {
 
     const rounds = 10;
     const hashedPassword = await hash(body.newPassword, rounds);
-    const [affectedCount] = await UserEntity.update({ password: hashedPassword }, { where: { email: body.email } });
+    const affectedCount = await this.userService.updatePasswordByEmail(body.email, hashedPassword);
 
     if (affectedCount === 0) {
       throw new BadRequestException('Пользователь не найден');
