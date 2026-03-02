@@ -37,7 +37,7 @@ export class UserEntity extends Model {
 
   @Column({
     type: DataType.ENUM,
-    values: [RolesUser.user, RolesUser.master],
+    values: [RolesUser.user, RolesUser.master, RolesUser.admin],
     allowNull: false,
     defaultValue: RolesUser.user,
   })

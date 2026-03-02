@@ -15,6 +15,7 @@ import {
   ServicesEntity,
   UserEntity,
 } from './entities';
+import { LoginAttemptEntity } from './entities/login-attempt.entity';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import {
           FavoritesEntity,
           NotificationsEntity,
           PromotionsEntity,
+          LoginAttemptEntity,
         ],
       }),
     }),

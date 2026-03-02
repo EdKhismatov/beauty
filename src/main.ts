@@ -23,7 +23,7 @@ async function bootstrap() {
     options: {
       urls: [appConfig.rabbitUrl],
       queue: 'mail_queue',
-      noAck: false,
+      noAck: true,
       queueOptions: {
         durable: false,
       },
