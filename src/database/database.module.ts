@@ -26,7 +26,7 @@ import { LoginAttemptEntity } from './entities/login-attempt.entity';
         autoLoadModels: true,
         synchronize: true,
         logging: false,
-        // sync: { alter: true },
+        // sync: { alter: true, force: true },
         models: [
           UserEntity,
           CitiesEntity,
