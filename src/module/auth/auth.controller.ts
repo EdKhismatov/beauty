@@ -1,8 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
+import { Public } from '../../decorators/public.decorator';
+import { Roles } from '../../decorators/roles.decorator';
 import { User } from '../../decorators/user.decorator';
-import { AuthGuard } from '../../guards/jwt.guard';
+import { RolesUser } from '../../guards/role.guard';
 import { AuthService } from './auth.service';
 import {
   ChangePasswordDto,
@@ -19,6 +21,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // регистрация
+  @Public()
   @ApiCreatedResponse({ description: 'Record created successfully' })
   @ApiOperation({ summary: 'Создание пользователя' })
   @Post('register')
@@ -29,9 +32,9 @@ export class AuthController {
   }
 
   // авторизация
+  @Public()
   @ApiCreatedResponse({ description: 'user authorization' })
   @ApiOperation({ summary: 'Авторизация пользователя' })
-  // @UseGuards(ThrottlerGuard)
   @Post('login')
   async login(@Body() body: LoginDto, @Req() req: FastifyRequest) {
     const ip = req.ip;
@@ -39,6 +42,7 @@ export class AuthController {
   }
 
   // логаут
+  @Public()
   @ApiCreatedResponse({ description: 'RefreshToken deleted ' })
   @ApiResponse({ status: 200, description: 'Успешный выход' })
   @HttpCode(HttpStatus.OK)
@@ -51,7 +55,7 @@ export class AuthController {
   // Профиль
   @ApiCreatedResponse({ description: 'Profile' })
   @ApiResponse({ status: 200, description: 'Получение юзера' })
-  @UseGuards(AuthGuard)
+  @Roles([RolesUser.admin, RolesUser.user, RolesUser.master])
   @HttpCode(HttpStatus.OK)
   @Get('profile')
   async profile(@User('id') id: string) {
@@ -59,6 +63,7 @@ export class AuthController {
   }
 
   // refresh
+  @Public()
   @ApiCreatedResponse({ description: 'New refreshtoken and accesstoken' })
   @ApiResponse({ status: 200, description: 'Успешно созданы refresh и access токен' })
   @HttpCode(HttpStatus.OK)
@@ -68,6 +73,7 @@ export class AuthController {
   }
 
   // Подтверждение почты
+  @Public()
   @ApiCreatedResponse({ description: 'Email confirmed' })
   @ApiResponse({ status: 200, description: 'Почта подтверждена' })
   @HttpCode(HttpStatus.OK)
@@ -77,7 +83,7 @@ export class AuthController {
   }
 
   // Изменение пароля
-  @UseGuards(AuthGuard)
+  @Roles([RolesUser.admin, RolesUser.user, RolesUser.master])
   @ApiCreatedResponse({ description: 'Сhange password' })
   @ApiResponse({ status: 200, description: 'Пароль изменен' })
   @HttpCode(HttpStatus.OK)
@@ -87,6 +93,7 @@ export class AuthController {
   }
 
   // отправка кода для восстановления пароля
+  @Public()
   @ApiCreatedResponse({ description: 'Sending a password recovery code' })
   @ApiResponse({ status: 200, description: 'Код отправлен' })
   @HttpCode(HttpStatus.OK)
@@ -96,6 +103,7 @@ export class AuthController {
   }
 
   // восстановление пароля с кодом подтверждения
+  @Public()
   @ApiCreatedResponse({ description: 'Reinstatement of the president' })
   @ApiResponse({ status: 200, description: 'Пароль обновлен' })
   @HttpCode(HttpStatus.OK)

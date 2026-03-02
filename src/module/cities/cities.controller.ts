@@ -1,9 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { RolesUser } from 'src/guards/role.guard';
+import { Public } from '../../decorators/public.decorator';
 import { Roles } from '../../decorators/roles.decorator';
-import { AuthGuard } from '../../guards/jwt.guard';
-import { RolesGuard } from '../../guards/roles.guard';
 import { CitiesService } from './cities.service';
 import { CreateCityDto, UpdateCityDto } from './dto';
 
@@ -13,6 +12,7 @@ export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
   // получение всех активных городов
+  @Public()
   @ApiResponse({ description: 'All active cities received' })
   @ApiOperation({ summary: 'Все активные города' })
   @Get('')
@@ -21,6 +21,7 @@ export class CitiesController {
   }
 
   // получение одного города по id
+  @Public()
   @ApiResponse({ description: 'All active cities received' })
   @ApiOperation({ summary: 'Поиск города по ID' })
   @Get(':id')
@@ -28,7 +29,8 @@ export class CitiesController {
     return await this.citiesService.getCityById(id);
   }
 
-  // получение одного города по id
+  // получение одного города по slug
+  @Public()
   @ApiResponse({ description: 'City by slug' })
   @ApiOperation({ summary: 'Поиск города по slug' })
   @Get('slug/:slug')
@@ -37,7 +39,6 @@ export class CitiesController {
   }
 
   // получение одного города по id
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles([RolesUser.admin])
   @ApiCreatedResponse({ description: 'A new city has been created' })
   @ApiOperation({ summary: 'Создание нового города' })
@@ -47,7 +48,6 @@ export class CitiesController {
   }
 
   // изменение города
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles([RolesUser.admin])
   @ApiCreatedResponse({ description: 'changed the city data' })
   @ApiOperation({ summary: 'Изменение города' })
@@ -57,7 +57,6 @@ export class CitiesController {
   }
 
   // активация и деактивация города
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles([RolesUser.admin])
   @ApiCreatedResponse({ description: 'activation/deactivation was successful' })
   @ApiOperation({ summary: 'активация/деактивация города' })

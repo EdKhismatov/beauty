@@ -1,12 +1,18 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { InjectModel } from '@nestjs/sequelize';
+import { LoginAttemptEntity } from '../../database/entities/login-attempt.entity';
 import { EmailService } from './email.service';
 
 @Controller()
 export class EmailController {
   private readonly logger = new Logger(EmailController.name);
 
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    @InjectModel(LoginAttemptEntity)
+    private loginAttempEntity: typeof LoginAttemptEntity,
+  ) {}
 
   // Подтверждение почты
   @EventPattern('send_welcome_email')
@@ -50,6 +56,15 @@ export class EmailController {
     } catch (error) {
       this.logger.log('Ошибка! Возвращаем в очередь...', `${error.message}`);
       channel.nack(originalMsg, false, true);
+    }
+  }
+
+  @EventPattern('log_auth_attempt')
+  async handleAuthLog(@Payload() data: any) {
+    try {
+      await this.loginAttempEntity.create(data);
+    } catch (e) {
+      this.logger.error('Ошибка записи лога в RabbitMQ:', e.message);
     }
   }
 }

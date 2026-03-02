@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { appConfig } from '../../config';
+import { LoginAttemptEntity } from '../../database/entities/login-attempt.entity';
 import { EmailController } from './email.controller';
 import { EmailService } from './email.service';
 
@@ -20,6 +22,7 @@ import { EmailService } from './email.service';
         from: appConfig.smtp.email, // Default sender address
       },
     }),
+    SequelizeModule.forFeature([LoginAttemptEntity]),
   ],
   controllers: [EmailController],
   providers: [EmailService],

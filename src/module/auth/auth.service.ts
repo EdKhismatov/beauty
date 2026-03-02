@@ -104,12 +104,12 @@ export class AuthService {
     }
   }
 
-  private logAttempt = (success: boolean, result: string, ip: string, email: string) => {
+  private logAttempt = (success: boolean, loginResult: string, ip: string, email: string) => {
     const payload = {
       email,
       ip,
       success,
-      result,
+      loginResult,
     };
     return this.rabbitClient.emit('log_auth_attempt', payload);
   };
