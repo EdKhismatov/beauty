@@ -63,4 +63,13 @@ export class UserController {
     }
     return await this.userService.updateAvatar(id, file);
   }
+
+  // удаление аватара
+  @Roles([RolesUser.admin, RolesUser.user, RolesUser.master])
+  @ApiCreatedResponse({ description: 'avatar removed' })
+  @ApiOperation({ summary: 'Удаление аватарки' })
+  @Delete('me/avatar')
+  async deleteAvatar(@User('id') id: string) {
+    return await this.userService.deleteAvatar(id);
+  }
 }
