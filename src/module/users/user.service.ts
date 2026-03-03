@@ -129,4 +129,19 @@ export class UserService {
 
     return { avatarUrl: fileName };
   }
+
+  // загрузка автара
+  async deleteAvatar(id: string) {
+    const user = await this.userModel.findByPk(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.avatarUrl) {
+      await this.filesService.removeImage(user.avatarUrl);
+      await user.update({ avatarUrl: null });
+    }
+    this.logger.log('Аватар успешно удален');
+    return { success: true };
+  }
 }
