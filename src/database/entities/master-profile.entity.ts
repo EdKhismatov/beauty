@@ -69,6 +69,9 @@ export class MasterProfileEntity extends Model {
   })
   declare public isTop: boolean;
 
+  @Column({ type: DataType.STRING, allowNull: true })
+  declare public avatarUrl: string;
+
   @Column({
     type: DataType.ENUM,
     values: [StatusMaster.banned, StatusMaster.paused, StatusMaster.active],
