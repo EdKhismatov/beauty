@@ -144,4 +144,15 @@ export class UserService {
     this.logger.log('Аватар успешно удален');
     return { success: true };
   }
+
+  // блокировка юзера
+  async toggleBlock(id: string) {
+    const user = await this.userModel.findByPk(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await user.update({ active: !user.active });
+    this.logger.log(`Пользователь ${user.email} ${user.active ? 'разблокирован' : 'заблокирован'}`);
+    return { active: user.active };
+  }
 }

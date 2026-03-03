@@ -8,11 +8,12 @@ import { RolesGuard } from './guards/roles.guard';
 import { AuthModule } from './module/auth/auth.module';
 import { CitiesModule } from './module/cities/cities.module';
 import { EmailModule } from './module/mailer/email.module';
+import { MasterModule } from './module/masters/master.module';
 import { MinioModule } from './module/minio/minio.module';
 import { UserModule } from './module/users/user.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, EmailModule, MinioModule, CitiesModule, UserModule, GuardsModule],
+  imports: [DatabaseModule, AuthModule, EmailModule, MinioModule, CitiesModule, UserModule, GuardsModule, MasterModule],
   controllers: [AppController],
   providers: [
     {

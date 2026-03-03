@@ -72,4 +72,12 @@ export class UserController {
   async deleteAvatar(@User('id') id: string) {
     return await this.userService.deleteAvatar(id);
   }
+
+  // блокировка юзера
+  @Roles([RolesUser.admin])
+  @ApiOperation({ summary: 'Блокировка/разблокировка пользователя' })
+  @Patch(':id/block')
+  async toggleBlock(@Param('id') id: string) {
+    return await this.userService.toggleBlock(id);
+  }
 }
