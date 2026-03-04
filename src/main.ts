@@ -10,6 +10,7 @@ import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { appConfig } from './config';
 import { Environment } from './config/dto';
 import { DEVELOPMENT_STRATEGY, PinoService, PRODUCTION_STRATEGY } from './logger';
+import { Queue } from './message-broker/rabbitmq.queue';
 
 async function bootstrap() {
   const pinoStrategy = process.env.NODE_ENV === Environment.DEV ? DEVELOPMENT_STRATEGY : PRODUCTION_STRATEGY;
@@ -22,7 +23,7 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [appConfig.rabbitUrl],
-      queue: 'mail_queue',
+      queue: Queue.mailQueue,
       noAck: true,
       queueOptions: {
         durable: false,

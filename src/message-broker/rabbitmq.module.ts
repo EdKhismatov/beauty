@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { appConfig } from '../config';
+import { Queue } from './rabbitmq.queue';
 
 @Module({
   imports: [
@@ -10,7 +11,7 @@ import { appConfig } from '../config';
         transport: Transport.RMQ,
         options: {
           urls: [appConfig.rabbitUrl],
-          queue: 'mail_queue',
+          queue: Queue.mailQueue,
           queueOptions: {
             durable: false,
           },
