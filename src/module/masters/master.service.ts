@@ -18,7 +18,6 @@ import { UpdateMasterDto } from './dto/update-master.dto';
 import { UpdateMasterStatusDto } from './dto/update-master-status.dto';
 
 @Injectable()
-@Injectable()
 export class MasterService {
   private readonly logger = new Logger(MasterService.name);
 
