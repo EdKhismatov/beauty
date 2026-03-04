@@ -1,25 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { appConfig } from '../config';
-import { Queue } from './rabbitmq.queue';
+import { ClientsModule } from '@nestjs/microservices';
+import { RMQ_MAIL_CLIENT } from './rabbitmq.config';
 
 @Module({
-  imports: [
-    ClientsModule.register([
-      {
-        name: 'MAIL_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [appConfig.rabbitUrl],
-          queue: Queue.mailQueue,
-          queueOptions: {
-            durable: false,
-          },
-        },
-      },
-    ]),
-  ],
-  providers: [],
+  imports: [ClientsModule.register([RMQ_MAIL_CLIENT])],
   exports: [ClientsModule],
 })
 export class RabbitmqModule {}

@@ -1,16 +1,15 @@
 import contentParser from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { MicroserviceOptions } from '@nestjs/microservices';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import process from 'node:process';
 import { bootstrapSwagger } from 'src/bootstrap/index';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
-import { appConfig } from './config';
 import { Environment } from './config/dto';
 import { DEVELOPMENT_STRATEGY, PinoService, PRODUCTION_STRATEGY } from './logger';
-import { Queue } from './message-broker/rabbitmq.queue';
+import { RMQ_MAIL_MICROSERVICE } from './message-broker/rabbitmq.config';
 
 async function bootstrap() {
   const pinoStrategy = process.env.NODE_ENV === Environment.DEV ? DEVELOPMENT_STRATEGY : PRODUCTION_STRATEGY;
@@ -19,17 +18,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, new FastifyAdapter({ trustProxy: true }));
   bootstrapSwagger(app);
 
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: [appConfig.rabbitUrl],
-      queue: Queue.mailQueue,
-      noAck: true,
-      queueOptions: {
-        durable: false,
-      },
-    },
-  });
+  app.connectMicroservice<MicroserviceOptions>(RMQ_MAIL_MICROSERVICE);
 
   app.enableShutdownHooks();
 

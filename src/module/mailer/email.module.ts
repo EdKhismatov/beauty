@@ -19,7 +19,7 @@ import { EmailService } from './email.service';
         },
       },
       defaults: {
-        from: appConfig.smtp.email, // Default sender address
+        from: appConfig.smtp.email,
       },
     }),
     SequelizeModule.forFeature([LoginAttemptEntity]),
