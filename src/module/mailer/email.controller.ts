@@ -2,6 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/sequelize';
 import { LoginAttemptEntity } from '../../database/entities/login-attempt.entity';
+import { EmailEvents } from './email.events';
 import { EmailService } from './email.service';
 
 @Controller()
@@ -15,7 +16,7 @@ export class EmailController {
   ) {}
 
   // Подтверждение почты
-  @EventPattern('send_welcome_email')
+  @EventPattern(EmailEvents.sendWelcomeEmail)
   async handleEmailSending(@Payload() data: { email: string; url: string }, @Ctx() context: RmqContext) {
     const channel = context.getChannelRef();
     const originalMsg = context.getMessage();
@@ -30,7 +31,7 @@ export class EmailController {
   }
 
   // Отправка кода для восстановления пароля
-  @EventPattern('send_password_reset_email')
+  @EventPattern(EmailEvents.sendPasswordResetEmail)
   async handlePasswordResetEmail(@Payload() data: { email: string; keys: string }, @Ctx() context: RmqContext) {
     const channel = context.getChannelRef();
     const originalMsg = context.getMessage();
@@ -45,7 +46,7 @@ export class EmailController {
   }
 
   // восстановление пароля c кодом подтверждения
-  @EventPattern('send_password_recovery_email')
+  @EventPattern(EmailEvents.sendPasswordRecoveryEmail)
   async handlePasswordRecoveryEmail(@Payload() data: { email: string; message: string }, @Ctx() context: RmqContext) {
     const channel = context.getChannelRef();
     const originalMsg = context.getMessage();
@@ -59,7 +60,7 @@ export class EmailController {
     }
   }
 
-  @EventPattern('log_auth_attempt')
+  @EventPattern(EmailEvents.logAuthAttempt)
   async handleAuthLog(@Payload() data: any) {
     try {
       await this.loginAttempEntity.create(data);
