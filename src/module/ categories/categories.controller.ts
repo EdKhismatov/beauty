@@ -80,5 +80,3 @@ export class CategoriesController {
     return await this.categoriesService.createIconCategories(id, file);
   }
 }
-
-// PATCH /categories/:id/icon — загрузить иконку (файл)
